@@ -1,0 +1,18 @@
+rules:
+  - id: HIGH_AOV_SELLER
+    desc: "高単価を継続販売"
+    when: "avg_listing_price >= 20000 && listings_count >= 5"
+    add_score: 20
+    add_flag: "high_AOV"
+
+  - id: COLLECTOR_MIKU
+    desc: "ミク系比率が高い"
+    when: "tag_ratio_miku >= 0.4"
+    add_score: 15
+    add_flag: "collector_miku"
+
+  - id: CLEAN_RECORD
+    desc: "通報ゼロ"
+    when: "reports_12m == 0"
+    add_score: 10
+    add_flag: "clean"
