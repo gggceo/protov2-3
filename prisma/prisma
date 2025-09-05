@@ -1,0 +1,16 @@
+enum VipTier {
+  NONE
+  SILVER
+  GOLD
+  PLATINUM
+}
+
+model User {
+  id        String   @id @default(cuid())
+  alias     String   @unique        // "@akiba_store" など
+  vipScore  Int      @default(0)
+  vipTier   VipTier  @default(NONE)
+  vipFlags  String[] @default([])
+  fanScores Json?
+  createdAt DateTime @default(now())
+}
