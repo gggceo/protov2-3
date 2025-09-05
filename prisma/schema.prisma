@@ -1,3 +1,4 @@
+// schema.prisma
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
@@ -8,19 +9,19 @@ generator client {
 }
 
 model Listing {
-  id          String   @id @default(cuid())
-  title       String
-  price       Int
+  id        String   @id @default(cuid())
+  title     String
+  price     Int
   sellerAlias String
-  image       String?  // 画像URL（後でR2/Supabaseに差し替え可）
-  createdAt   DateTime @default(now())
+  image     String?   // 画像URL (後でR2/Supabaseに差し替え可)
+  createdAt DateTime  @default(now())
 }
 
 model Message {
   id        String   @id @default(cuid())
   roomId    String
   body      String
-  ref       String?  // ?ref=@alias 追跡用
+  ref       String?  // ref=@alias 追加用
   createdAt DateTime @default(now())
 }
 
