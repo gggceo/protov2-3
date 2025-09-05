@@ -20,3 +20,9 @@
     "typescript": "5.5.4"
   }
 }
+"scripts": {
+  "dev": "next dev -p 3000",
+  "build": "prisma db push && next build",
+  "start": "next start",
+  "postinstall": "prisma generate"
+}
