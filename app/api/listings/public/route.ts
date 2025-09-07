@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import prisma from '../../../../lib/db';
+import { prisma } from "../../../lib/db";
 
 const hits: Record<string,{count:number;ts:number}> = {};
 const WINDOW_MS = 60_000, MAX_HITS = 8;
