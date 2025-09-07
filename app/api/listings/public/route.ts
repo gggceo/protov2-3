@@ -1,4 +1,6 @@
-import prisma from "../../../../lib/db";
+import prisma from "@/lib/db";
+const mod = await import("@/lib/vip");
+await mod.recalcVip(sellerAlias);
 
 const hits: Record<string, { count: number; ts: number }> = {};
 const WINDOW_MS = 60_000; // 1分
