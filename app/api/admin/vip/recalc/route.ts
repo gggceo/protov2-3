@@ -1,5 +1,5 @@
-import prisma from "@/lib/db";
-import { recalcVip } from "@/lib/vip";
+import prisma from "../../../../../lib/db";
+import { recalcVip } from "../../../../../lib/vip";
 
 export async function POST(req: Request) {
   if (req.headers.get("x-admin-key") !== process.env.ADMIN_KEY) {
