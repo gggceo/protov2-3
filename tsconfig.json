@@ -12,9 +12,10 @@
     "allowJs": true,
     "noEmit": true,
     "types": ["node", "react", "react-dom"],
-    "baseUrl": ".",               // ★ 追加
-    "paths": {                    // ★ 追加
-      "@/*": ["./*"]
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["*"],
+      "@/lib/*": ["lib/*"]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx"],
