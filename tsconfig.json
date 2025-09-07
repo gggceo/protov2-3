@@ -13,9 +13,9 @@
     "noEmit": true,
     "types": ["node", "react", "react-dom"],
     "baseUrl": ".",
-　　 "paths": {
-    "@/*": ["*"],
-    "@/lib/*": ["lib/*"]
+    "paths": {
+      "@/*": ["*"],
+      "@/lib/*": ["lib/*"]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx"],
