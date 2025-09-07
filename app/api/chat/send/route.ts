@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
-import prisma from "../../../../lib/db";
-import containsPII from "../../../../lib/pii";
+import prisma from "@/lib/db";
+import containsPII from "@/lib/pii";
 
 // 超簡易レート制限（1分に10回まで）
 const hits: Record<string, { count: number; ts: number }> = {};
