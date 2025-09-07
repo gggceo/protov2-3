@@ -1,4 +1,4 @@
-import prisma from "@/lib/db";
+import prisma from "../../../../lib/db";
 
 const hits: Record<string, { count: number; ts: number }> = {};
 const WINDOW_MS = 60_000; // 1分
@@ -45,7 +45,7 @@ export async function POST(req: Request) {
 
   // ---- VIP再計算（import を POST 内に移動）----
   try {
-    const mod = await import("@/lib/vip");
+    const mod = await import("../../../../lib/vip");
     await mod.recalcVip(sellerAlias);
   } catch {}
 
