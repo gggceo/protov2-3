@@ -42,5 +42,13 @@ model User {
   id        String   @id @default(cuid())
   alias     String   @unique
   createdAt DateTime @default(now())
+
   vipTier   VipTier  @default(NONE)
+
+  // ★ 追加（コードに合わせる）
+  vipScore  Int      @default(0)
+  vipFlags  String[] @default([])
+
+  // もし他に fanScores などがあれば残してOK
+  // fanScores Json?
 }
