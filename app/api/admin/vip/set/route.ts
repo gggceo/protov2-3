@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/db";
+import { prisma } from '../../../../lib/db';
 export async function POST(req: Request) {
   if ((req.headers.get("x-admin-key")||"") !== process.env.ADMIN_KEY) return new Response("forbidden",{status:403});
   const { alias, score, tier, flags } = await req.json();
