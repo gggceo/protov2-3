@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import prisma from "@/lib/db";
-import { recalcvip } from "@/lib/vip";
+try { (await import("@/lib/vip")).recalcVip(sellerAlias); } catch {}
 import containsPII from "@/lib/pii";
 
 const hits: Record<string,{count:number;ts:number}> = {};
