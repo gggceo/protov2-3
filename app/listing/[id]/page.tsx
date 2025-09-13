@@ -4,22 +4,47 @@ import { useEffect, useState } from "react";
 import type { Listing } from "@/lib/types";
 import { useRouter } from "next/navigation";
 
+type AnyListing = Listing & { image?: string; imageUrl?: string };
+
 export default function ListingDetail({ params }: { params: { id: string } }) {
   const router = useRouter();
-  const [item, setItem] = useState<Listing | null>(null);
+  const [item, setItem] = useState<AnyListing | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
-  const [alias, setAlias] = useState<string>(""); // 購入者の表示名（任意）
+  const [alias, setAlias] = useState("");
 
+  // まず /api/listings/:id を試し、無ければ /api/listings から探す
   useEffect(() => {
     (async () => {
       setLoading(true);
+      setErr(null);
       try {
-        const res = await fetch(`/api/listings/${params.id}`, { cache: "no-store" });
-        const json = await res.json();
-        setItem(json?.item ?? null);
-      } catch {
-        setErr("読み込みに失敗しました");
+        // 1) 直接取得（存在すれば最短）
+        const r1 = await fetch(`/api/listings/${params.id}`, { cache: "no-store" });
+        if (r1.ok) {
+          const j1 = await r1.json().catch(() => ({}));
+          const got = j1?.item ?? j1?.data?.item ?? j1?.data ?? j1;
+          if (got && (got.id === params.id || got.id)) {
+            setItem(got);
+            setLoading(false);
+            return;
+          }
+        }
+        // 2) 一覧から拾う（確実に動くフォールバック）
+        const r2 = await fetch(`/api/listings`, { cache: "no-store" });
+        const j2 = await r2.json().catch(() => ({}));
+        const arr: AnyListing[] = Array.isArray(j2?.data)
+          ? j2.data
+          : Array.isArray(j2?.items)
+          ? j2.items
+          : Array.isArray(j2)
+          ? j2
+          : [];
+        const found = arr.find((x) => x.id === params.id) ?? null;
+        if (!found) throw new Error("該当IDが見つかりませんでした");
+        setItem(found);
+      } catch (e: any) {
+        setErr(String(e?.message ?? e));
       } finally {
         setLoading(false);
       }
@@ -34,53 +59,68 @@ export default function ListingDetail({ params }: { params: { id: string } }) {
         body: JSON.stringify({ listingId: params.id, buyerAlias: alias || undefined }),
       });
       const json = await res.json();
-      if (!json?.ok || !json?.roomId) throw new Error("開始に失敗");
+      if (!json?.ok || !json?.roomId) throw new Error("チャット開始に失敗しました");
       router.push(`/chat/${json.roomId}`);
-    } catch (e:any) {
-      setErr(e?.message ?? "開始に失敗しました");
+    } catch (e: any) {
+      setErr(String(e?.message ?? e));
     }
   };
 
-  if (loading) return <div style={{ padding:16 }}>読み込み中…</div>;
-  if (err) return <div style={{ padding:16, color:"#b91c1c" }}>エラー: {err}</div>;
-  if (!item) return <div style={{ padding:16 }}>見つかりませんでした</div>;
+  if (loading) return <div style={{ padding: 16 }}>読み込み中…</div>;
+  if (err) return <div style={{ padding: 16, color: "#b91c1c" }}>エラー: {err}</div>;
+  if (!item) return <div style={{ padding: 16 }}>見つかりませんでした</div>;
+
+  const img = (item as any).imageUrl ?? (item as any).image ?? "";
 
   return (
     <div style={{ maxWidth: 960, margin: "0 auto", padding: 16 }}>
-      <button onClick={() => router.back()} style={{ marginBottom:12, fontSize:14 }}>← 戻る</button>
+      <button onClick={() => router.back()} style={{ marginBottom: 12, fontSize: 14 }}>
+        ← 戻る
+      </button>
 
-      <div style={{ display:"grid", gap:16, gridTemplateColumns:"1.1fr .9fr" }}>
+      <div style={{ display: "grid", gap: 16, gridTemplateColumns: "1.1fr .9fr" }}>
         {/* 画像 */}
-        <div style={{ border:"1px solid #e5e7eb", borderRadius:12, padding:12, background:"#fff" }}>
-          {item.imageUrl && (
-            <img src={item.imageUrl} alt={item.title} style={{ width:"100%", borderRadius:8, objectFit:"cover" }} />
+        <div style={{ border: "1px solid #e5e7eb", borderRadius: 12, padding: 12, background: "#fff" }}>
+          {img ? (
+            <img
+              src={img}
+              alt={item.title}
+              style={{ width: "100%", borderRadius: 8, objectFit: "cover" }}
+            />
+          ) : (
+            <div style={{ height: 320, borderRadius: 8, background: "#f3f4f6" }} />
           )}
         </div>
 
         {/* 情報 */}
         <div>
-          <h1 style={{ fontSize:24, fontWeight:700 }}>{item.title}</h1>
-          <div style={{ fontSize:20, marginTop:6, fontVariantNumeric:"tabular-nums" }}>
+          <h1 style={{ fontSize: 24, fontWeight: 700 }}>{item.title}</h1>
+          <div style={{ fontSize: 20, marginTop: 6, fontVariantNumeric: "tabular-nums" }}>
             ¥{Number(item.price || 0).toLocaleString()}
           </div>
-          <div style={{ color:"#6b7280", marginTop:4, fontSize:13 }}>
+          <div style={{ color: "#6b7280", marginTop: 4, fontSize: 13 }}>
             出品者: {item.sellerAlias ?? "匿名"}
           </div>
 
-          {/* 購入→チャット開始（簡易導線） */}
-          <div style={{ marginTop:16, border:"1px solid #e5e7eb", borderRadius:12, padding:12 }}>
-            <div style={{ fontSize:14, marginBottom:8 }}>購入前に出品者と連絡する</div>
+          {/* チャット開始 */}
+          <div style={{ marginTop: 16, border: "1px solid #e5e7eb", borderRadius: 12, padding: 12 }}>
+            <div style={{ fontSize: 14, marginBottom: 8 }}>購入前に出品者と連絡する</div>
             <input
               placeholder="あなたの表示名（任意）"
               value={alias}
-              onChange={(e)=>setAlias(e.target.value)}
-              style={{ padding:10, borderRadius:8, border:"1px solid #e5e7eb", width:"100%", marginBottom:8 }}
+              onChange={(e) => setAlias(e.target.value)}
+              style={{ padding: 10, borderRadius: 8, border: "1px solid #e5e7eb", width: "100%", marginBottom: 8 }}
             />
             <button
               onClick={startChat}
               style={{
-                padding:"10px 14px", borderRadius:8, border:"1px solid #111827",
-                background:"#111827", color:"#fff", fontWeight:600, width:"100%"
+                padding: "10px 14px",
+                borderRadius: 8,
+                border: "1px solid #111827",
+                background: "#111827",
+                color: "#fff",
+                fontWeight: 600,
+                width: "100%",
               }}
             >
               チャットを開始する
