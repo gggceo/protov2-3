@@ -13,7 +13,7 @@ export default function ListingDetail({ params }: { params: { id: string } }) {
   const [err, setErr] = useState<string | null>(null);
   const [alias, setAlias] = useState("");
 
-  // まず /api/listings/:id を試し、無ければ /api/listings から探す
+  // 1) /api/listings/:id を試し、2) ダメなら /api/listings から該当IDを拾う
   useEffect(() => {
     (async () => {
       setLoading(true);
@@ -22,7 +22,7 @@ export default function ListingDetail({ params }: { params: { id: string } }) {
         // 1) 直接取得（存在すれば最短）
         const r1 = await fetch(`/api/listings/${params.id}`, { cache: "no-store" });
         if (r1.ok) {
-          const j1 = await r1.json().catch(() => ({}));
+          const j1 = await r1.json().catch(() => ({} as any));
           const got = j1?.item ?? j1?.data?.item ?? j1?.data ?? j1;
           if (got && (got.id === params.id || got.id)) {
             setItem(got);
@@ -32,14 +32,11 @@ export default function ListingDetail({ params }: { params: { id: string } }) {
         }
         // 2) 一覧から拾う（確実に動くフォールバック）
         const r2 = await fetch(`/api/listings`, { cache: "no-store" });
-        const j2 = await r2.json().catch(() => ({}));
-        const arr: AnyListing[] = Array.isArray(j2?.data)
-          ? j2.data
-          : Array.isArray(j2?.items)
-          ? j2.items
-          : Array.isArray(j2)
-          ? j2
-          : [];
+        const j2 = await r2.json().catch(() => ({} as any));
+        const arr: AnyListing[] =
+          Array.isArray(j2?.data) ? j2.data :
+          Array.isArray(j2?.items) ? j2.items :
+          Array.isArray(j2) ? j2 : [];
         const found = arr.find((x) => x.id === params.id) ?? null;
         if (!found) throw new Error("該当IDが見つかりませんでした");
         setItem(found);
@@ -51,19 +48,9 @@ export default function ListingDetail({ params }: { params: { id: string } }) {
     })();
   }, [params.id]);
 
-  const startChat = async () => {
-    try {
-      const res = await fetch(`/api/chat/start`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ listingId: params.id, buyerAlias: alias || undefined }),
-      });
-      const json = await res.json();
-      if (!json?.ok || !json?.roomId) throw new Error("チャット開始に失敗しました");
-      router.push(`/chat/${json.roomId}`);
-    } catch (e: any) {
-      setErr(String(e?.message ?? e));
-    }
+  // まずは “必ずチャット画面に行ける” 導線にする（部屋生成APIは呼ばない）
+  const startChat = () => {
+    router.push(`/chat/${params.id}`);
   };
 
   if (loading) return <div style={{ padding: 16 }}>読み込み中…</div>;
@@ -82,11 +69,7 @@ export default function ListingDetail({ params }: { params: { id: string } }) {
         {/* 画像 */}
         <div style={{ border: "1px solid #e5e7eb", borderRadius: 12, padding: 12, background: "#fff" }}>
           {img ? (
-            <img
-              src={img}
-              alt={item.title}
-              style={{ width: "100%", borderRadius: 8, objectFit: "cover" }}
-            />
+            <img src={img} alt={item.title} style={{ width: "100%", borderRadius: 8, objectFit: "cover" }} />
           ) : (
             <div style={{ height: 320, borderRadius: 8, background: "#f3f4f6" }} />
           )}
@@ -102,7 +85,7 @@ export default function ListingDetail({ params }: { params: { id: string } }) {
             出品者: {item.sellerAlias ?? "匿名"}
           </div>
 
-          {/* チャット開始 */}
+          {/* チャット開始（最小導線） */}
           <div style={{ marginTop: 16, border: "1px solid #e5e7eb", borderRadius: 12, padding: 12 }}>
             <div style={{ fontSize: 14, marginBottom: 8 }}>購入前に出品者と連絡する</div>
             <input
