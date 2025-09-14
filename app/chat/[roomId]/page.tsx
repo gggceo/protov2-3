@@ -5,7 +5,6 @@ import { useEffect, useRef, useState } from "react";
 type Msg = { role: "me" | "sys"; text: string; id: string };
 
 export default function ChatPage({ params }: { params: { roomId: string } }) {
-  // ← 初期メッセージを空にする
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
@@ -16,14 +15,29 @@ export default function ChatPage({ params }: { params: { roomId: string } }) {
     tailRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [msgs]);
 
+  // 初期ロード：履歴取得
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const r = await fetch(`/api/chat/${encodeURIComponent(params.roomId)}`, { cache: "no-store" });
+        const j = await r.json().catch(() => ({}));
+        if (j?.ok && Array.isArray(j.messages)) {
+          setMsgs(j.messages.map((m: any) => ({ role: m.role, text: m.text, id: m.id })));
+        } else {
+          // 失敗時は空のまま
+        }
+      } catch {}
+    };
+    load();
+  }, [params.roomId]);
+
   async function send() {
     const m = text.trim();
     if (!m || busy) return;
     setBusy(true);
 
     const tempId = String(Date.now());
-
-    // 先に自分の発言を描画し、入力欄を空にする
+    // 先に描画 & クリア
     setMsgs((s) => [...s, { role: "me", text: m, id: tempId }]);
     setText("");
 
@@ -36,30 +50,18 @@ export default function ChatPage({ params }: { params: { roomId: string } }) {
 
       const raw = await res.text();
       let json: any;
-      try {
-        json = raw ? JSON.parse(raw) : {};
-      } catch {
-        json = { ok: false, error: "invalid JSON", raw };
-      }
+      try { json = raw ? JSON.parse(raw) : {}; } catch { json = { ok: false, error: "invalid JSON", raw }; }
 
       if (!res.ok || json?.ok === false) {
         const reason = json?.error || json?.message || `HTTP ${res.status}`;
-        setMsgs((s) => [
-          ...s,
-          { role: "sys", text: `送信に失敗しました。- ${reason}`, id: `e-${tempId}` },
-        ]);
+        setMsgs((s) => [...s, { role: "sys", text: `送信に失敗しました。- ${reason}`, id: `e-${tempId}` }]);
         return;
       }
 
-      const reply: string =
-        json.reply ?? json.echo?.message ?? "受け取りました。";
-
+      const reply = json.reply ?? "受け取りました。";
       setMsgs((s) => [...s, { role: "sys", text: reply, id: `r-${tempId}` }]);
     } catch (e: any) {
-      setMsgs((s) => [
-        ...s,
-        { role: "sys", text: `ネットワークエラーです。${String(e?.message || e)}`, id: `n-${tempId}` },
-      ]);
+      setMsgs((s) => [...s, { role: "sys", text: `ネットワークエラーです。${String(e?.message || e)}`, id: `n-${tempId}` }]);
     } finally {
       setBusy(false);
     }
@@ -81,7 +83,6 @@ export default function ChatPage({ params }: { params: { roomId: string } }) {
           position: "relative",
         }}
       >
-        {/* 履歴が無いときのプレースホルダー（バブルでは出さない） */}
         {msgs.length === 0 && (
           <div
             aria-hidden
@@ -118,6 +119,7 @@ export default function ChatPage({ params }: { params: { roomId: string } }) {
             </span>
           </div>
         ))}
+
         <div ref={tailRef} />
       </div>
 
