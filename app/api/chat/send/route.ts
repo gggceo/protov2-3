@@ -1,26 +1,27 @@
 import { NextResponse } from "next/server";
-const API_BASE = process.env.API_BASE!;
-const ADMIN_KEY = process.env.ADMIN_KEY!;
 
-// POST /api/chat/send  →  backend: POST /chat/send
 export async function POST(req: Request) {
-  const body = await req.json().catch(() => ({}));
-  // body 例: { roomId: string, message: string, ref?: string }
+  try {
+    const body = await req.json();
+    const { roomId, message } = body;
 
-  const r = await fetch(`${API_BASE}/chat/send`, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      "x-admin-key": ADMIN_KEY,
-    },
-    body: JSON.stringify(body),
-  });
+    if (!message) {
+      return NextResponse.json(
+        { ok: false, error: "メッセージが空です" },
+        { status: 400 }
+      );
+    }
 
-  const text = await r.text();
-  let data: any; try { data = JSON.parse(text); } catch { data = text; }
-
-  return NextResponse.json(
-    data ?? { ok: false, error: "no response" },
-    { status: r.status }
-  );
+    // 💡 まずはデモ用に受け取ったものをそのまま返す
+    return NextResponse.json({
+      ok: true,
+      roomId,
+      reply: `受け取りました: ${message}`,
+    });
+  } catch (e: any) {
+    return NextResponse.json(
+      { ok: false, error: e.message || "サーバーエラー" },
+      { status: 500 }
+    );
+  }
 }
