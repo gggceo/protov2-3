@@ -5,9 +5,8 @@ import { useEffect, useRef, useState } from "react";
 type Msg = { role: "me" | "sys"; text: string; id: string };
 
 export default function ChatPage({ params }: { params: { roomId: string } }) {
-  const [msgs, setMsgs] = useState<Msg[]>([
-    { role: "sys", text: "購入希望です！", id: "init" },
-  ]);
+  // ← 初期メッセージを空にする
+  const [msgs, setMsgs] = useState<Msg[]>([]);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const tailRef = useRef<HTMLDivElement>(null);
@@ -22,8 +21,9 @@ export default function ChatPage({ params }: { params: { roomId: string } }) {
     if (!m || busy) return;
     setBusy(true);
 
-    // 先に自分の発言を描画して入力欄を空にする（操作感優先）
     const tempId = String(Date.now());
+
+    // 先に自分の発言を描画し、入力欄を空にする
     setMsgs((s) => [...s, { role: "me", text: m, id: tempId }]);
     setText("");
 
@@ -34,7 +34,6 @@ export default function ChatPage({ params }: { params: { roomId: string } }) {
         body: JSON.stringify({ roomId: params.roomId, message: m }),
       });
 
-      // テキスト→JSONの順で堅く処理
       const raw = await res.text();
       let json: any;
       try {
@@ -79,8 +78,27 @@ export default function ChatPage({ params }: { params: { roomId: string } }) {
           padding: 12,
           minHeight: 240,
           background: "rgba(255,255,255,.9)",
+          position: "relative",
         }}
       >
+        {/* 履歴が無いときのプレースホルダー（バブルでは出さない） */}
+        {msgs.length === 0 && (
+          <div
+            aria-hidden
+            style={{
+              position: "absolute",
+              inset: 0,
+              display: "grid",
+              placeItems: "center",
+              color: "#9aa2b1",
+              fontSize: 14,
+              pointerEvents: "none",
+            }}
+          >
+            まだメッセージはありません。下の入力欄から送信してください。
+          </div>
+        )}
+
         {msgs.map((m) => (
           <div key={m.id} style={{ textAlign: m.role === "me" ? "right" : "left" }}>
             <span
@@ -92,6 +110,8 @@ export default function ChatPage({ params }: { params: { roomId: string } }) {
                 background: m.role === "me" ? "#eef2ff" : "#fff",
                 border: "1px solid #e5e7eb",
                 maxWidth: "85%",
+                whiteSpace: "pre-wrap",
+                wordBreak: "break-word",
               }}
             >
               {m.text}
