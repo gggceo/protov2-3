@@ -12,6 +12,7 @@ export default function HomePage() {
   const [price, setPrice] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [posting, setPosting] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
 
   // 一覧を取得
   async function fetchListings() {
@@ -20,10 +21,15 @@ export default function HomePage() {
       const res = await fetch("/api/listings");
       if (res.ok) {
         const data = await res.json();
-        setListings(data);
+        const arr: Listing[] =
+          Array.isArray(data) ? data :
+          Array.isArray(data.items) ? data.items :
+          [];
+        setListings(arr);
       }
-    } catch (err) {
-      console.error(err);
+    } catch (e) {
+      console.error("fetchListings error", e);
+      setListings([]);
     }
     setLoading(false);
   }
@@ -36,6 +42,7 @@ export default function HomePage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setPosting(true);
+    setErr(null);
     try {
       const res = await fetch("/api/listings", {
         method: "POST",
@@ -43,24 +50,24 @@ export default function HomePage() {
         body: JSON.stringify({
           title,
           price: Number(price),
-          imageUrl,
+          image: imageUrl || undefined,
         }),
       });
-      if (res.ok) {
-        setTitle("");
-        setPrice("");
-        setImageUrl("");
-        fetchListings();
+      if (!res.ok) throw new Error(await res.text());
 
-        // ✅ お祝いホロ演出（2秒だけ hologram に切り替え）
-        document.body.dataset.bg = "holo";
-        setTimeout(() => {
-          document.body.dataset.bg =
-            (localStorage.getItem("bg_theme") as any) || "lux";
-        }, 2000);
-      }
-    } catch (err) {
-      console.error(err);
+      setTitle("");
+      setPrice("");
+      setImageUrl("");
+      await fetchListings();
+
+      // ✅ お祝いホロ
+      document.body.dataset.bg = "holo";
+      setTimeout(() => {
+        document.body.dataset.bg =
+          (localStorage.getItem("bg_theme") as any) || "lux";
+      }, 2000);
+    } catch (e: any) {
+      setErr(String(e.message || e));
     }
     setPosting(false);
   }
@@ -88,7 +95,6 @@ export default function HomePage() {
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           required
-          style={{ padding: 8, border: "1px solid #ddd", borderRadius: 6 }}
         />
         <input
           type="number"
@@ -96,29 +102,17 @@ export default function HomePage() {
           value={price}
           onChange={(e) => setPrice(e.target.value)}
           required
-          style={{ padding: 8, border: "1px solid #ddd", borderRadius: 6 }}
         />
         <input
           type="url"
           placeholder="画像URL"
           value={imageUrl}
           onChange={(e) => setImageUrl(e.target.value)}
-          style={{ padding: 8, border: "1px solid #ddd", borderRadius: 6 }}
         />
-        <button
-          type="submit"
-          className="pressable ease-std motion-fast"
-          style={{
-            padding: "10px 14px",
-            borderRadius: 8,
-            background: "#111827",
-            color: "#fff",
-            fontWeight: 600,
-            border: "none",
-          }}
-        >
+        <button type="submit" disabled={posting}>
           {posting ? "出品中..." : "出品する"}
         </button>
+        {err && <p style={{ color: "red" }}>エラー: {err}</p>}
       </form>
 
       <h2 style={{ fontSize: 20, fontWeight: 600, marginBottom: 12 }}>
@@ -130,21 +124,22 @@ export default function HomePage() {
           display: "grid",
           gap: 18,
           gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
-          paddingBlock: 8,
         }}
       >
         {loading ? (
           <div>読み込み中...</div>
         ) : listings.length === 0 ? (
-          <div>まだ商品がありません。上のフォームから出品してみましょう。</div>
+          <div>まだ商品がありません。</div>
         ) : (
-          listings.map((it, idx) => (
-            <Revealer key={it.id}>
-              <div style={{ transitionDelay: `${idx * 30}ms` }}>
-                <ListingCard item={it} />
-              </div>
-            </Revealer>
-          ))
+          listings.map((it, idx) =>
+            it?.id ? (
+              <Revealer key={it.id}>
+                <div style={{ transitionDelay: `${idx * 30}ms` }}>
+                  <ListingCard item={it} />
+                </div>
+              </Revealer>
+            ) : null
+          )
         )}
       </div>
     </main>
