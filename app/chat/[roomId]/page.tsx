@@ -2,80 +2,95 @@
 
 import { useEffect, useRef, useState } from "react";
 
-function getSavedRef() {
-  if (typeof window === "undefined") return null;
-  return localStorage.getItem("referrer_code");
-}
-
-type Msg = { id?: string; text: string; from?: string; createdAt?: string };
+type Msg = { role: "me" | "sys"; text: string; id: string };
 
 export default function ChatPage({ params }: { params: { roomId: string } }) {
-  const [msgs, setMsgs] = useState<Msg[]>([]);
+  const [msgs, setMsgs] = useState<Msg[]>([
+    { role: "sys", text: "購入希望です！", id: "init" },
+  ]);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
-  const refEl = useRef<HTMLDivElement>(null);
+  const tailRef = useRef<HTMLDivElement>(null);
 
-  const scrollBottom = () =>
-    requestAnimationFrame(() => refEl.current?.scrollIntoView({ behavior: "smooth" }));
+  // 末尾へスクロール
+  useEffect(() => {
+    tailRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [msgs]);
 
-  // 履歴読み込み（なければ空）
-  const load = async () => {
-    const r = await fetch(`/api/chat/${params.roomId}`, { cache: "no-store" });
-    const j = await r.json().catch(() => ({ messages: [] }));
-    const arr: Msg[] = Array.isArray(j?.messages) ? j.messages : [];
-    setMsgs(arr);
-    scrollBottom();
-  };
-
-  useEffect(() => { load(); }, [params.roomId]);
-
-  const send = async () => {
-    if (!text.trim() || busy) return;
+  async function send() {
+    const m = text.trim();
+    if (!m || busy) return;
     setBusy(true);
 
-    // 楽観的反映
-    const temp: Msg = { id: `tmp-${Date.now()}`, text, from: "me", createdAt: new Date().toISOString() };
-    setMsgs((m) => [...m, temp]);
-    scrollBottom();
+    // 先に自分の発言を描画して入力欄を空にする（操作感優先）
+    const tempId = String(Date.now());
+    setMsgs((s) => [...s, { role: "me", text: m, id: tempId }]);
+    setText("");
 
     try {
       const res = await fetch("/api/chat/send", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          roomId: params.roomId,
-          message: text,
-          ref: getSavedRef() || undefined,
-        }),
+        body: JSON.stringify({ roomId: params.roomId, message: m }),
       });
-      if (!res.ok) {
-        const t = await res.text();
-        throw new Error(t || "send failed");
+
+      // テキスト→JSONの順で堅く処理
+      const raw = await res.text();
+      let json: any;
+      try {
+        json = raw ? JSON.parse(raw) : {};
+      } catch {
+        json = { ok: false, error: "invalid JSON", raw };
       }
-      // 成功後に最新を取り直し（ズレ解消）
-      await load();
-      setText("");
+
+      if (!res.ok || json?.ok === false) {
+        const reason = json?.error || json?.message || `HTTP ${res.status}`;
+        setMsgs((s) => [
+          ...s,
+          { role: "sys", text: `送信に失敗しました。- ${reason}`, id: `e-${tempId}` },
+        ]);
+        return;
+      }
+
+      const reply: string =
+        json.reply ?? json.echo?.message ?? "受け取りました。";
+
+      setMsgs((s) => [...s, { role: "sys", text: reply, id: `r-${tempId}` }]);
     } catch (e: any) {
-      setMsgs((m) => [...m, { text: `sys: 送信に失敗しました - ${String(e?.message ?? e)}` }]);
+      setMsgs((s) => [
+        ...s,
+        { role: "sys", text: `ネットワークエラーです。${String(e?.message || e)}`, id: `n-${tempId}` },
+      ]);
     } finally {
       setBusy(false);
     }
-  };
+  }
 
   return (
-    <main style={{ padding: 24, maxWidth: 720, margin: "0 auto" }}>
-      <h2 style={{ marginTop: 0 }}>チャット: {params.roomId}</h2>
+    <main style={{ padding: 24, maxWidth: 900, margin: "0 auto" }}>
+      <h2 style={{ margin: "8px 0 16px", fontWeight: 700 }}>
+        チャット：{params.roomId}
+      </h2>
 
-      <div style={{ border: "1px solid #eee", borderRadius: 8, padding: 12, minHeight: 280 }}>
-        {msgs.map((m, i) => (
-          <div key={m.id ?? i} style={{ textAlign: m.from === "me" ? "right" : "left", margin: "8px 0" }}>
+      <div
+        style={{
+          border: "1px solid #e5e7eb",
+          borderRadius: 12,
+          padding: 12,
+          minHeight: 240,
+          background: "rgba(255,255,255,.9)",
+        }}
+      >
+        {msgs.map((m) => (
+          <div key={m.id} style={{ textAlign: m.role === "me" ? "right" : "left" }}>
             <span
               style={{
                 display: "inline-block",
-                background: m.from === "me" ? "#f0f0f0" : "#fff",
-                border: "1px solid #ddd",
-                borderRadius: 8,
+                margin: "6px 0",
                 padding: "8px 10px",
+                borderRadius: 10,
+                background: m.role === "me" ? "#eef2ff" : "#fff",
+                border: "1px solid #e5e7eb",
                 maxWidth: "85%",
               }}
             >
@@ -83,7 +98,7 @@ export default function ChatPage({ params }: { params: { roomId: string } }) {
             </span>
           </div>
         ))}
-        <div ref={refEl} />
+        <div ref={tailRef} />
       </div>
 
       <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
@@ -92,12 +107,26 @@ export default function ChatPage({ params }: { params: { roomId: string } }) {
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => (e.key === "Enter" ? send() : null)}
           placeholder="ここにメッセージ入力"
-          style={{ flex: 1, padding: "10px 12px", borderRadius: 6, border: "1px solid #ccc" }}
+          disabled={busy}
+          style={{
+            flex: 1,
+            padding: "10px 12px",
+            borderRadius: 8,
+            border: "1px solid #cfd6e4",
+            background: "#fff",
+          }}
         />
         <button
           onClick={send}
           disabled={busy}
-          style={{ padding: "10px 16px", borderRadius: 6, border: "1px solid #333" }}
+          style={{
+            padding: "10px 14px",
+            borderRadius: 8,
+            border: "1px solid #111827",
+            background: busy ? "#e5e7eb" : "#111827",
+            color: busy ? "#111827" : "#fff",
+            fontWeight: 700,
+          }}
         >
           送信
         </button>
