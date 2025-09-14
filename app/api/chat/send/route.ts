@@ -1,26 +1,16 @@
+// app/api/chat/send/route.ts
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const { roomId, message } = body;
-
-    if (!message) {
-      return NextResponse.json(
-        { ok: false, error: "メッセージが空です" },
-        { status: 400 }
-      );
-    }
-
-    // 💡 まずはデモ用に受け取ったものをそのまま返す
+    const body = await req.json();   // JSON をそのまま受け取る
     return NextResponse.json({
       ok: true,
-      roomId,
-      reply: `受け取りました: ${message}`,
+      echo: body,
     });
   } catch (e: any) {
     return NextResponse.json(
-      { ok: false, error: e.message || "サーバーエラー" },
+      { ok: false, error: e?.message ?? "server error" },
       { status: 500 }
     );
   }
