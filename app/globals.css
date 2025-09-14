@@ -1,0 +1,146 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ===== 基本パレット ===== */
+:root{
+  --bg-ink: #0b0f17;         /* 深い藍黒 */
+  --bg-ivory: #faf7f1;       /* 生成り */
+  --bg-ink-soft: #121826;    /* 柔らかい藍黒 */
+  --holo-a: #7c3aed;         /* 紫（ホロ用） */
+  --holo-b: #22d3ee;         /* 青緑（ホロ用） */
+
+  /* Motion tokens */
+  --motion-fast: 140ms;
+  --motion-medium: 220ms;
+  --motion-slow: 360ms;
+  --ease-standard: cubic-bezier(.2,.0,.2,1);
+  --ease-emphasized: cubic-bezier(.2,.0,0,1);
+  --ease-decelerate: cubic-bezier(0,0,.2,1);
+  --ease-accelerate: cubic-bezier(.4,0,1,1);
+}
+
+/* ===== Elegant Dynamic Background ===== */
+.bg-noise,
+.bg-gradient-anim,
+.bg-vignette{
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* 紙ノイズ（ごく薄く） */
+.bg-noise{
+  opacity:.03;
+  mix-blend-mode: normal;
+  background-image:url("data:image/svg+xml,\
+  %3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'%3E\
+    %3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E\
+    %3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size:200px 200px;
+}
+
+/* なめらかなグラデーション＋緩いドリフト */
+.bg-gradient-anim{
+  background:
+    radial-gradient(1200px 800px at 20% 10%, #ffffff, transparent 60%),
+    radial-gradient(900px 600px at 80% 20%, var(--bg-ivory), transparent 55%),
+    radial-gradient(900px 600px at 40% 90%, #dfe7ff, transparent 55%),
+    linear-gradient(180deg, #ffffff, #f6f7fb 40%, #f3f6ff);
+  animation: drift 26s ease-in-out infinite alternate;
+  will-change: transform, opacity, background-position;
+}
+
+/* ビネット（視線を中央へ） */
+.bg-vignette{
+  background: radial-gradient(1200px 800px at 50% 50%, transparent 65%, rgba(0,0,0,.08));
+}
+
+/* lux (高級) */
+body[data-bg="lux"] .bg-gradient-anim{
+  background:
+    radial-gradient(1200px 800px at 15% 0%, #ffffff, transparent 55%),
+    radial-gradient(900px 600px at 85% 15%, #eef2ff, transparent 55%),
+    radial-gradient(900px 600px at 45% 85%, #f8fafc, transparent 55%),
+    linear-gradient(180deg, #ffffff, #f6f7fb 40%, #eff3ff);
+}
+
+/* paper (和紙・省エネ) */
+body[data-bg="paper"] .bg-gradient-anim{
+  background: linear-gradient(180deg, #fff, #faf7f1);
+  animation-duration: 40s;
+  opacity:.96;
+}
+
+/* holo (ホログラム差し色) */
+body[data-bg="holo"] .bg-gradient-anim{
+  background:
+    radial-gradient(1200px 800px at 20% 10%, color-mix(in oklab, var(--holo-a) 12%, white), transparent 60%),
+    radial-gradient(900px 600px at 80% 20%, color-mix(in oklab, var(--holo-b) 12%, white), transparent 55%),
+    radial-gradient(900px 600px at 40% 90%, color-mix(in oklab, var(--holo-a) 10%, white), transparent 55%),
+    linear-gradient(180deg, #ffffff, #f6f7fb 40%, #f3f6ff);
+  animation-duration: 24s;
+}
+
+@keyframes drift{
+  0%   { transform: translate3d(0,0,0) scale(1);    filter: saturate(1); }
+  50%  { transform: translate3d(0,-10px,0) scale(1.01); filter: saturate(1.02); }
+  100% { transform: translate3d(0, 6px,0) scale(1.005); filter: saturate(1.01); }
+}
+
+/* ===== Motion Utilities / 所作 ===== */
+.motion-fast{ transition-duration: var(--motion-fast)!important; }
+.motion-med { transition-duration: var(--motion-medium)!important; }
+.motion-slow{ transition-duration: var(--motion-slow)!important; }
+.ease-std   { transition-timing-function: var(--ease-standard)!important; }
+.ease-emp   { transition-timing-function: var(--ease-emphasized)!important; }
+.ease-decel { transition-timing-function: var(--ease-decelerate)!important; }
+.ease-accel { transition-timing-function: var(--ease-accelerate)!important; }
+
+.reveal{
+  opacity:0; transform: translateY(6px) scale(.995);
+  transition:
+    opacity var(--motion-medium) var(--ease-decelerate),
+    transform var(--motion-medium) var(--ease-decelerate);
+}
+.reveal.is-in{
+  opacity:1; transform: translateY(0) scale(1);
+}
+
+.pressable{ transition: transform var(--motion-fast) var(--ease-standard); }
+.pressable:active{ transform: translateY(1px) scale(.995); }
+
+.lift{
+  transition:
+    transform var(--motion-fast) var(--ease-standard),
+    box-shadow var(--motion-medium) var(--ease-standard),
+    border-color var(--motion-medium) var(--ease-standard);
+}
+.lift:hover{
+  transform: translateY(-2px) scale(1.01);
+  box-shadow: 0 8px 24px rgba(0,0,0,.06);
+  border-color:#e6e9ee;
+}
+
+/* カード/ボタンの微ホログロウ（上品版） */
+.hover-glow{
+  position: relative;
+  overflow: hidden;
+}
+.hover-glow::after{
+  content:"";
+  position:absolute; inset:-1px;
+  background: radial-gradient(400px 200px at var(--mx,50%) var(--my,50%),
+    color-mix(in oklab, var(--holo-a) 16%, transparent),
+    transparent 50%);
+  opacity:0; transition: opacity var(--motion-fast) var(--ease-standard);
+  pointer-events:none;
+}
+.hover-glow:hover::after{ opacity:.35; }
+
+/* reduce-motion */
+@media (prefers-reduced-motion: reduce){
+  .reveal, .lift, .pressable{
+    transition:none!important; transform:none!important;
+  }
+}
